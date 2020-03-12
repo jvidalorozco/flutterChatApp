@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_socket_io/flutter_socket_io.dart';
 import 'package:flutter_socket_io/socket_io_manager.dart';
@@ -59,11 +60,23 @@ void created(inData){
 }
 
 void closed(inData){
-
+ Map<String,dynamic> payload = jsonDecode(inData);
+ model.setRoomList(payload);
+ if(payload["roomName"] == model.currentRoomName){
+   model.removeRoomInvite(payload["roomName"]);
+   model.setCurrentRoomUserList({});
+   model.setCurrentRoomName(FlutterChatModel.DEFAULT_ROOM_NAME);
+   model.setCurrentRoomEnabled(false);
+   model.setGreeting("The room you were in was closed by  its creator.");
+   Navigator.of(model.rootBuildContext).pushNamedAndRemoveUntil("/", ModalRoute.withName("/"));
+ }
 }
 
 void joined(inData){
-
+ Map<String,dynamic> payload = jsonDecode(inData);
+ if(model.currentRoomName == payload["roomName"]){
+   model.setCurrentRoomUserList(payload["users"]);
+ }
 }
 
 void left(inData){
@@ -75,11 +88,24 @@ void kicked(inData){
 }
 
 void invited(inData){
-
+  Map<String,dynamic> payload = jsonDecode(inData);
+  String roomName = payload["roomName"];
+  String inviterName = payload["inviterName"];
+  model.addRoomInvite(roomName);
+  Scaffold.of(model.rootBuildContext).showSnackBar(SnackBar(
+    backgroundColor: Colors.amber,
+    duration: Duration(seconds: 60),
+    content: Text("You've been invited to the room" "'$roomName' by user '$inviterName'.\n\n"
+     "You can enter the room from the lobby."),
+    action: SnackBarAction(label: "Ok", onPressed: (){}),
+  ), );
 }
 
 void posted(inData){
-
+ Map<String,dynamic> payload = jsonDecode(inData);
+ if(model.currentRoomName == payload["roomName"]){
+   model.addMessage(payload["userName"], payload["message"]);
+ }
 }
 
 void listRooms(final Function inCallback){
